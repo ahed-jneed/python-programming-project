@@ -1,0 +1,104 @@
+library(dplyr)
+library(lubridate)
+
+# Function to create a random ledger DataFrame
+create_ledger <- function(n) {
+  data.frame(
+    AccountNumber = sample(sprintf("%09d", 1:999999999), n, replace = TRUE),
+    Date = replicate(n, random_date("2020-01-01", "2023-01-01")),
+    Description = paste("Transaction", sample(1:100, n, replace = TRUE)),
+    Debit = round(runif(n, min = 100, max = 1000), 2),
+    Credit = round(runif(n, min = 100, max = 1000), 2)
+  )
+}
+
+# Function to anonymize data
+anonymize_data <- function(df, column) {
+  unique_vals <- unique(df[[column]])
+  anonymized_vals <- paste(column, seq_along(unique_vals), sep = "_")
+  anonymization_map <- setNames(anonymized_vals, unique_vals)
+  df[[column]] <- anonymization_map[df[[column]]]
+  return(df)
+}
+
+# Adjust numeric columns and dates
+adjust_ledger <- function(df) {
+  df %>%
+    mutate(
+      Date = Date %m-% months(9),
+      Debit = Debit * runif(nrow(df), min = 0.5, max = 1.5),
+      Credit = Credit * runif(nrow(df), min = 0.5, max = 1.5)
+    )
+}
+
+# Create and anonymize ledger
+ledger <- create_ledger(10)
+ledger[c(2, 5), "AccountNumber"] <- ledger[1, "AccountNumber"] # Introducing duplicates
+ledger_anonymized <- ledger %>%
+  mutate(across(c(AccountNumber, Description), ~ anonymize_data(ledger, .x))) %>%
+  adjust_ledger()
+
+# Print both ledgers
+print(ledger)
+print(ledger_anonymized)
+
+
+-------------------------------------------------------------------------
+library(dplyr)
+library(lubridate)
+
+# Function to create a random ledger DataFrame
+create_ledger <- function(n) {
+  data.frame(
+    AccountNumber = sample(sprintf("%09d", 1:999999999), n, replace = TRUE),
+    Date = replicate(n, random_date("2020-01-01", "2023-01-01")),
+    Description = paste("Transaction", sample(1:100, n, replace = TRUE)),
+    Debit = round(runif(n, min = 100, max = 1000), 2),
+    Credit = round(runif(n, min = 100, max = 1000), 2)
+  )
+}
+
+# Function to anonymize data and create a mapping dictionary
+anonymize_data <- function(df, column) {
+  unique_vals <- unique(df[[column]])
+  anonymized_vals <- paste(column, seq_along(unique_vals), sep = "_")
+  anonymization_map <- setNames(anonymized_vals, unique_vals)
+  df[[column]] <- anonymization_map[df[[column]]]
+  return(list(df, anonymization_map))
+}
+
+# Adjust numeric columns and dates, and save multipliers
+adjust_ledger <- function(df) {
+  multipliers <- runif(nrow(df), min = 0.5, max = 1.5)
+  adjusted_df <- df %>%
+    mutate(
+      Date = Date %m-% months(9),
+      Debit = Debit * multipliers,
+      Credit = Credit * multipliers
+    )
+  return(list(adjusted_df, multipliers))
+}
+
+# Create ledger with duplicates
+ledger <- create_ledger(10)
+ledger[c(2, 5), "AccountNumber"] <- ledger[1, "AccountNumber"] # Introducing duplicates
+
+# Anonymize ledger and get mapping dictionaries
+anonymization_results <- ledger %>%
+  mutate(across(c(AccountNumber, Description), ~ anonymize_data(ledger, .x)[[1]]))
+ledger_anonymized <- anonymization_results[[1]]
+mapping_dictionaries <- list(
+  AccountNumber = anonymize_data(ledger, "AccountNumber")[[2]],
+  Description = anonymize_data(ledger, "Description")[[2]]
+)
+
+# Adjust and get multipliers
+adjustment_results <- adjust_ledger(ledger_anonymized)
+ledger_adjusted <- adjustment_results[[1]]
+multipliers <- adjustment_results[[2]]
+
+# Print results
+print(ledger)
+print(ledger_adjusted)
+print(mapping_dictionaries)
+print(multipliers)
